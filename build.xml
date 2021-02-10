@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="rockelliptic" name="RockElliptic by pakat">
+  <!-- Applet building dependencies -->
+  <property name="JC221" value="../ext/java_card_kit-2_2_1"/>
+  <property name="JC222" value="../ext/java_card_kit-2_2_2"/>
+
+  <!-- ant-javacard task from javacard.pro -->
+  <taskdef name="javacard" classname="pro.javacard.ant.JavaCard" classpath="../ext/ant-javacard.jar"/>
+  <!-- All included applets -->
+  <target name="rockelliptic">
+    <javacard>
+
+      <cap jckit="${JC221}" output="RockElliptic221.cap" sources="src/rockelliptic">
+        <applet class="rockelliptic.RockElliptic" aid="0102030405093270"/>
+      </cap>
+
+    </javacard>
+  </target>
+</project>
