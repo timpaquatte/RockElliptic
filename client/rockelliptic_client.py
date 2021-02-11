@@ -3,13 +3,14 @@
 from smartcard.System import readers
 from tkinter import *
 from tkinter import ttk
-from .instructions import *
-from .specs import *
 import ecdsa
 
+from .instructions import *
+from .specs import *
+from .sql import getSQLConn
 
-def createAccount(id_user, first_name, name, amount):
 
+def connectReader():
     # Connect to the reader
     r=readers()
     connection=r[0].createConnection()
@@ -17,29 +18,39 @@ def createAccount(id_user, first_name, name, amount):
 
     # Send the apdu
     data, sw1, sw2 = connection.transmit(apdu)
+    return connection
 
-    # Send the data
+def createAccount(id_user, first_name, name, amount):
+    connection = connectReader()
+
+    # Form the data
     info = id_user.to_bytes(SIZE_ID, ENDIANNESS)
     info += first_name.encode() + b"\x00"*(SIZE_NAME - len(first_name))
     info += name.encode() + b"\x00"*(SIZE_NAME - len(name))
     info += amount.to_bytes(SIZE_AMOUNT, ENDIANNESS)
 
+    # Sign it
     sk = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
     vk = sk.get_verifying_key()
     sig = sk.sign(info)
     info = list(info + sig)
 
+    # Send it
     Lc = len(info)
     print(info)
     print("Size data sent:", Lc)
     data, sw1, sw2 = connection.transmit([CLA,INS_RECEIVE_DATA,P1,P2,Lc]+info)
     print(hex(sw1),hex(sw2), data)
 
-    # Receive
-    print("Receive")
-    Lc = 0
-    data, sw1, sw2 = connection.transmit([CLA,INS_SEND_DATA,P1,P2,Lc])
-    print(hex(sw1),hex(sw2), data)
+    # Receive public key
+    pubkey = None
+
+    ## SQL part
+    conn = getSQLConn()
+    req = "INSERT INTO CLIENT (id, first_name, name, amount, pubkey) values (?, ?, ?, ?, ?)"
+    data = (id_user, first_name, name, amount, pubkey)
+    with conn:
+        conn.execute(req, data)
 
     #Disconnect the reader
     connection.disconnect()
@@ -48,11 +59,19 @@ def refill(*args):
     pass
 
 def pay(*args):
-    # Ask the user ID to the card
-    # Make sure this ID has enough money
-    # Ask for PIN code to the user
-    # If it matches, challenge to the card to make sure it's the right one (crypto challenge)
-    # Withdraw the amount of the transaction from the account
+    connection = connectReader()
+
+    print("=== PAIEMENT ===")
+    Lc = 0
+    data, sw1, sw2 = connection.transmit([CLA,INS_SEND_DATA,P1,P2,Lc])
+    print("Received:")
+    print(hex(sw1),hex(sw2), data)
+    info = bytearray(data[:TOTAL_SIZE])
+    sig = bytearray(data[TOTAL_SIZE:])
+
+    print("Verif signature:", vk.verify(sig, info))
+
+
     pass
 
 def main():
