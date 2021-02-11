@@ -3,18 +3,81 @@
 from smartcard.System import readers
 from tkinter import *
 from tkinter import ttk
+import ecdsa
 
-def createAccount(root):
-    root.geometry("800x800")
+# Size of the different fields in bytes
+SIZE_NAME = 20
+SIZE_ID = 20
+SIZE_AMOUNT = 4
+
+ENDIANNESS = "big"
+
+SELECT = [0x00,0xA4,0x04,0x00,0x08]
+
+## Selection AID
+AID = [0x01,0x02,0x03,0x04,0x05,0x09,0x32,0x70]
+apdu = SELECT + AID
+
+## Affichage message
+CLA = 0xA0
+P1,P2 = 0x00, 0x00
+Le = 0x00 # set to 0 means the client does not know the size of received data
+
+## Instructions
+INS_RECEIVE_DATA = 0x01
+INS_SEND_DATA = 0x02
+INS_CHALLENGE = 0x03
+DEBUG = 0x00
+
+def createAccount(id_user, first_name, name, amount):
+
+    # Connect to the reader
+    r=readers()
+    connection=r[0].createConnection()
+    connection.connect()
+
+    # Send the apdu
+    data, sw1, sw2 = connection.transmit(apdu)
+
+    # Send the data
+    info = id_user.to_bytes(SIZE_ID, ENDIANNESS)
+    info += first_name.encode() + b"\x00"*(SIZE_NAME - len(first_name))
+    info += name.encode() + b"\x00"*(SIZE_NAME - len(name))
+    info += amount.to_bytes(SIZE_AMOUNT, ENDIANNESS)
+
+    sk = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
+    vk = sk.get_verifying_key()
+    sig = sk.sign(info)
+    info = list(info + sig)
+
+    Lc = len(info)
+    print(info)
+    print("Size data sent:", Lc)
+    data, sw1, sw2 = connection.transmit([CLA,INS_RECEIVE_DATA,P1,P2,Lc]+info)
+    print(hex(sw1),hex(sw2), data)
+
+    # Receive
+    print("Receive")
+    Lc = 0
+    data, sw1, sw2 = connection.transmit([CLA,INS_SEND_DATA,P1,P2,Lc])
+    print(hex(sw1),hex(sw2), data)
+
+    #Disconnect the reader
+    connection.disconnect()
 
 def refill(*args):
     pass
 
 def pay(*args):
+    # Ask the user ID to the card
+    # Make sure this ID has enough money
+    # Ask for PIN code to the user
+    # If it matches, challenge to the card to make sure it's the right one (crypto challenge)
+    # Withdraw the amount of the transaction from the account
     pass
 
 def main():
-    
+
     ## Initialization
     root = Tk()
     root.geometry("800x600")
@@ -76,48 +139,6 @@ def main():
 
 
 if __name__=="__main__":
-    main()
+    # main()
+    createAccount(42, "Tim", "Paquatte", 1000)
 
-""" r=readers()
-connection=r[0].createConnection()
-connection.connect()
-SELECT = [0x00,0xA4,0x04,0x00,0x08]
-
-#Selection AID
-AID = [0x01,0x02,0x03,0x04,0x05,0x09,0x32,0x70]
-apdu = SELECT + AID
-data, sw1, sw2 = connection.transmit(apdu)
-
-#affichage message
-CLA = 0xA0
-INS1 = 0x00
-INS2 = 0x01
-INS3 = 0x02
-P1,P2 = 0x00, 0x00
-Le = 0x00 # set to 0 means the client does not know the size of received data 
-
-
-#Printing debug message
-data, sw1, sw2 = connection.transmit([CLA,INS3,P1,P2,Le])
-print(hex(sw1),hex(sw2), data)
-
-#Sending Master Name
-PIN = [2, 7, 0, 0]
-Lc = len(PIN)
-print(Lc)
-data, sw1, sw2 = connection.transmit([CLA,INS1,P1,P2,Lc]+PIN)
-print(hex(sw1),hex(sw2), data)
-
-#Printing message
-data, sw1, sw2 = connection.transmit([CLA,INS2,P1,P2,Le])
-print(hex(sw1),hex(sw2), data)
-
-mess1 = ''
-for e in data:
-    mess1 += chr(e)
-
-print(mess1)
-
-
-#Disconnect the reader
-connection.disconnect() """
