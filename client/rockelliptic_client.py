@@ -92,20 +92,21 @@ def main():
     account_frame.pack(fill="both", padx=5, pady=5)
 
     name = StringVar()
-    debit = StringVar()
+    amount = StringVar()
     first_name = StringVar()
-    id_num = StringVar()
+    id_user = StringVar()
     ttk.Label(account_frame, text="Nom").grid(row=0, column=0)
     ttk.Entry(account_frame, textvariable=name).grid(row=0, column=1)
     ttk.Label(account_frame, text="Prénom").grid(row=1, column=0)
     ttk.Entry(account_frame, textvariable=first_name).grid(row=1, column=1)
     ttk.Label(account_frame, text="Débit").grid(row=2, column=0)
-    ttk.Entry(account_frame, textvariable=debit).grid(row=2, column=1)
+    ttk.Entry(account_frame, textvariable=amount).grid(row=2, column=1)
     ttk.Label(account_frame, text="€").grid(row=2, column=2)
     ttk.Label(account_frame, text="Numéro de participant").grid(row=3, column=0)
-    ttk.Entry(account_frame, textvariable=id_num).grid(row=3, column=1)
+    ttk.Entry(account_frame, textvariable=id_user).grid(row=3, column=1)
 
-    btn = ttk.Button(account_frame, width=50, text="Créer", command=createAccount)
+    callback = lambda: createAccount(int(id_user.get()), first_name.get(), name.get(), int(amount.get()))
+    btn = ttk.Button(account_frame, width=50, text="Créer", command=callback)
     btn.grid(columnspan=2, rowspan=2, row=1, column=3, padx=30)
 
     ## Refill card
