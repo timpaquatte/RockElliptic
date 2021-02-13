@@ -5,6 +5,7 @@ from tkinter import *
 from tkinter import ttk
 import tkinter.font as tkFont
 import ecdsa
+from os import path
 
 from .instructions import *
 from .specs import *
@@ -27,7 +28,47 @@ def connectReader():
     data, sw1, sw2 = connection.transmit(apdu)
     return connection
 
+def getSigningKey():
+    relpath = "./ressources/signkey.pem"
+    abspath = path.abspath(relpath)
+    file = open(abspath, "rb")
+    signing_key = ecdsa.SigningKey.from_pem(file.read())
+    file.close()
+    return signing_key
+
+def getVerifyingKey():
+    relpath = "./ressources/verifkey.pem"
+    abspath = path.abspath(relpath)
+    file = open(abspath, "rb")
+    verif_key = ecdsa.VerifyingKey.from_pem(file.read())
+    file.close()
+    return verif_key
+
+def checkParams(id_user, first_name, name, balance):
+    if len(first_name) > SIZE_NAME:
+        print("First name too long (%d max)" % SIZE_NAME)
+        return -1
+    if len(first_name) == 0:
+        print("You need to enter a first name")
+        return -1
+    if len(name) > SIZE_NAME:
+        print("Name too long (%d max)" % SIZE_NAME)
+        return -1
+    if len(name) == 0:
+        print("You need to enter a name")
+        return -1
+    if id_user > (2**SIZE_ID):
+        print("ID too big (%d max)" % (2**SIZE_ID))
+        return -1
+    if balance > (2**SIZE_BALANCE):
+        print("Balance too big (%d max)" % (2**SIZE_BALANCE))
+        return -1
+    return 0
+
 def createAccount(id_user, first_name, name, balance):
+    if checkParams(id_user, first_name, name, balance) == -1:
+        return
+
     connection = connectReader()
 
     # Form the data
@@ -37,8 +78,7 @@ def createAccount(id_user, first_name, name, balance):
     info += balance.to_bytes(SIZE_BALANCE, ENDIANNESS)
 
     # Sign it
-    sk = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
-    vk = sk.get_verifying_key()
+    sk = getSigningKey()
     sig = sk.sign(info)
     info = list(info + sig)
 
@@ -67,6 +107,8 @@ def refill(*args):
 
 def pay(*args):
     connection = connectReader()
+
+    vk = getVerifyingKey()
 
     print("=== PAIEMENT ===")
     Lc = 0
@@ -121,20 +163,20 @@ def main():
     account_frame.pack(fill="both", padx=5, pady=5)
 
     name = StringVar()
-    balance = StringVar()
+    balance = IntVar()
     first_name = StringVar()
-    id_user = StringVar()
-    ttk.Label(account_frame, text="Nom").grid(row=0, column=0)
-    ttk.Entry(account_frame, textvariable=name).grid(row=0, column=1)
-    ttk.Label(account_frame, text="Prénom").grid(row=1, column=0)
-    ttk.Entry(account_frame, textvariable=first_name).grid(row=1, column=1)
+    id_user = IntVar()
+    ttk.Label(account_frame, text="Prénom").grid(row=0, column=0)
+    ttk.Entry(account_frame, textvariable=first_name).grid(row=0, column=1)
+    ttk.Label(account_frame, text="Nom").grid(row=1, column=0)
+    ttk.Entry(account_frame, textvariable=name).grid(row=1, column=1)
     ttk.Label(account_frame, text="Débit").grid(row=2, column=0)
     ttk.Entry(account_frame, textvariable=balance).grid(row=2, column=1)
     ttk.Label(account_frame, text="€").grid(row=2, column=2)
     ttk.Label(account_frame, text="Numéro de participant").grid(row=3, column=0)
     ttk.Entry(account_frame, textvariable=id_user).grid(row=3, column=1)
 
-    callback = lambda: createAccount(int(id_user.get()), first_name.get(), name.get(), int(balance.get()))
+    callback = lambda: createAccount(id_user.get(), first_name.get(), name.get(), balance.get())
     btn = ttk.Button(account_frame, width=38, text="Créer", command=callback)
     btn.grid(columnspan=2, rowspan=2, row=1, column=3, padx=30)
 

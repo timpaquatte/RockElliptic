@@ -15,7 +15,7 @@ def init_sql():
                     id INTEGER NOT NULL PRIMARY KEY,
                     first_name TEXT,
                     name TEXT,
-                    amount INTEGER,
+                    balance INTEGER,
                     pubkey BLOB
                 );
                 """)

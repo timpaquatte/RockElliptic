@@ -1,2 +1,5 @@
 RockElliptic221.cap
 client/__pycache__/
+ressources/client_data.db
+ressources/signkey.pem
+ressources/verifkey.pem
