@@ -15,6 +15,15 @@ FONT = "Sawasdee"
 canvas = None
 txt = None
 
+def log(message, *args, error=False):
+    s = str(message)
+    for x in args:
+        s += " " + str(x)
+    if error:
+        print("[ERROR]", s)
+    else:
+        print(s)
+
 def connectReader():
     # Connect to the reader
     r=readers()
@@ -46,22 +55,22 @@ def getVerifyingKey():
 
 def checkParams(id_user, first_name, name, balance):
     if len(first_name) > SIZE_NAME:
-        print("First name too long (%d max)" % SIZE_NAME)
+        log("First name too long (%d max)" % SIZE_NAME)
         return -1
     if len(first_name) == 0:
-        print("You need to enter a first name")
+        log("You need to enter a first name")
         return -1
     if len(name) > SIZE_NAME:
-        print("Name too long (%d max)" % SIZE_NAME)
+        log("Name too long (%d max)" % SIZE_NAME)
         return -1
     if len(name) == 0:
-        print("You need to enter a name")
+        log("You need to enter a name")
         return -1
-    if id_user > (2**SIZE_ID):
-        print("ID too big (%d max)" % (2**SIZE_ID))
+    if id_user > (2**(SIZE_ID*8)):
+        log("ID too big (%d max)" % (2**SIZE_ID))
         return -1
-    if balance > (2**SIZE_BALANCE):
-        print("Balance too big (%d max)" % (2**SIZE_BALANCE))
+    if balance > (2**(SIZE_BALANCE*8)):
+        log("Balance too big (%d max)" % (2**SIZE_BALANCE))
         return -1
     return 0
 
@@ -84,10 +93,10 @@ def createAccount(id_user, first_name, name, balance):
 
     # Send it
     Lc = len(info)
-    print(info)
-    print("Size data sent:", Lc)
+    log(info)
+    log("Size data sent:", Lc)
     data, sw1, sw2 = connection.transmit([CLA,INS_RECEIVE_DATA,P1,P2,Lc]+info)
-    print(hex(sw1),hex(sw2), data)
+    log(hex(sw1), hex(sw2), data)
 
     # Receive public key
     pubkey = None
