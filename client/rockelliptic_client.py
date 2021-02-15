@@ -5,12 +5,14 @@ from smartcard.System import readers
 from tkinter import *
 from tkinter import ttk
 import tkinter.font as tkFont
+from tkinter.messagebox import *
 
 import ecdsa
 from os import path
 import Crypto
 from Crypto.PublicKey import RSA
 from colorama import Fore
+import string
 
 from .instructions import *
 from .specs import *
@@ -125,6 +127,34 @@ def createAccount(id_user, first_name, name, balance):
 
     #Disconnect the reader
     connection.disconnect()
+
+def getPinCode():
+    newWindow = Toplevel()
+    newWindow.title("Code PIN")
+
+    def limitSize(*args):
+        value = PIN.get()
+        if len(value) > 2: PIN.set(value[:4])
+        elif value[-1] not in string.digits:
+            PIN.set(value[:-1])
+
+    def end(*args):
+        newWindow.quit()
+        newWindow.destroy()
+
+    PIN = StringVar()
+    PIN.trace('w', limitSize)
+    ttk.Label(newWindow, text="Entrez le code PIN").pack(padx=5, pady=5)
+    entry = ttk.Entry(newWindow, textvariable=PIN, show="*")
+    entry.pack(padx=5, pady=5)
+    ttk.Button(newWindow, text="OK", command=end).pack(padx=5, pady=5)
+
+    entry.focus_set()
+    newWindow.bind("<Return>", end)
+    newWindow.mainloop()
+
+    return [int(x) for x in PIN.get()]
+
 
 def transaction(amount):
     connection = connectReader()
