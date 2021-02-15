@@ -87,9 +87,11 @@ def parsePubKey(pubkey):
 
     offset = 2 + expLength
     modLength = int.from_bytes(pubkey[offset:offset+2], "big")
-    mod = int.from_bytes(pubkey[offset + 2:], "big")
+    mod = int.from_bytes(pubkey[offset + 2:offset + 2 + modLength], "big")
 
-    return (mod, exp)
+    pin = list(pubkey[offset + 2 + modLength:])
+
+    return (mod, exp), pin
 
 
 def createAccount(id_user, first_name, name, balance):
@@ -124,6 +126,9 @@ def createAccount(id_user, first_name, name, balance):
     data = (id_user, first_name, name, balance, pubkey)
     with conn:
         conn.execute(req, data)
+
+    pubkey, PIN = parsePubKey(pubkey)
+    log("Pin created:", PIN)
 
     #Disconnect the reader
     connection.disconnect()
@@ -177,12 +182,13 @@ def transaction(amount):
     with conn:
         c = conn.execute("SELECT pubkey, balance, first_name, name  FROM CLIENT WHERE id=?", (id_user,))
         pubkey, balance, first_name, name = c.fetchone()
-    pubkey = parsePubKey(pubkey)
+    pubkey, pin_created = parsePubKey(pubkey)
     log("ID:", id_user)
     log("First name:", first_name)
     log("Name:", name)
     log("Balance:", balance)
     log("Public key:", pubkey)
+    log("PIN created:", pin_created)
 
     ## Check that the balance is sufficient
     if balance - amount > 0:
@@ -212,6 +218,19 @@ def transaction(amount):
         log("Challenge succeeded")
     else:
         log("Fail in challenge", error=True)
+
+
+    ## Send the PIN code
+    PIN = getPinCode()
+    log("PIN:", PIN)
+    Lc = 4
+    success, sw1, sw2 = connection.transmit([CLA,INS_CHECK_PIN,P1,P2,Lc]+PIN)
+    success = success[0]
+
+    if success == 0:
+        log("Right PIN")
+    else:
+        log("Wrong PIN", error=True)
 
     ## Write the new information
     # Form the data
@@ -319,7 +338,7 @@ def main():
     ttk.Entry(refill_frame, textvariable=amount_pay).pack(side=LEFT, padx=10)
     ttk.Label(refill_frame, text="€").pack(side=LEFT, padx=10)
 
-    btn = ttk.Button(refill_frame, width=50, text="Recharger",
+    btn = ttk.Button(refill_frame, width=50, text="Payer",
         command=lambda: transaction(amount_pay.get()))
 
     btn.pack(side=LEFT, padx=10, pady=5)
