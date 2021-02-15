@@ -1,11 +1,16 @@
 #gp -v --install HelloIO.cap --params 4a6176614361726479
 
 from smartcard.System import readers
+
 from tkinter import *
 from tkinter import ttk
 import tkinter.font as tkFont
+
 import ecdsa
 from os import path
+import Crypto
+from Crypto.PublicKey import RSA
+from colorama import Fore
 
 from .instructions import *
 from .specs import *
@@ -20,9 +25,9 @@ def log(message, *args, error=False):
     for x in args:
         s += " " + str(x)
     if error:
-        print("[ERROR]", s)
+        print(Fore.RED + "[ERROR]", s, Fore.RESET)
     else:
-        print(s)
+        print("[+]", s)
 
 def connectReader():
     # Connect to the reader
@@ -67,12 +72,23 @@ def checkParams(id_user, first_name, name, balance):
         log("You need to enter a name")
         return -1
     if id_user > (2**(SIZE_ID*8)):
-        log("ID too big (%d max)" % (2**SIZE_ID))
+        log("ID too big (%d max)" % (2**(SIZE_ID*8)))
         return -1
     if balance > (2**(SIZE_BALANCE*8)):
-        log("Balance too big (%d max)" % (2**SIZE_BALANCE))
+        log("Balance too big (%d max)" % (2**(SIZE_BALANCE*8)))
         return -1
     return 0
+
+def parsePubKey(pubkey):
+    expLength = int.from_bytes(pubkey[:2], "big")
+    exp = int.from_bytes(pubkey[2:2 + expLength], "big")
+
+    offset = 2 + expLength
+    modLength = int.from_bytes(pubkey[offset:offset+2], "big")
+    mod = int.from_bytes(pubkey[offset + 2:], "big")
+
+    return (mod, exp)
+
 
 def createAccount(id_user, first_name, name, balance):
     if checkParams(id_user, first_name, name, balance) == -1:
@@ -93,13 +109,12 @@ def createAccount(id_user, first_name, name, balance):
 
     # Send it
     Lc = len(info)
-    log(info)
-    log("Size data sent:", Lc)
     data, sw1, sw2 = connection.transmit([CLA,INS_RECEIVE_DATA,P1,P2,Lc]+info)
-    log(hex(sw1), hex(sw2), data)
 
     # Receive public key
-    pubkey = None
+    Lc=0
+    pubkey, sw1, sw2 = connection.transmit([CLA,INS_SEND_PUBKEY,P1,P2,Lc])
+    pubkey = bytearray(pubkey)
 
     ## SQL part
     conn = getSQLConn()
@@ -111,25 +126,88 @@ def createAccount(id_user, first_name, name, balance):
     #Disconnect the reader
     connection.disconnect()
 
-def refill(*args):
-    pass
-
-def pay(*args):
+def transaction(amount):
     connection = connectReader()
 
     vk = getVerifyingKey()
 
-    print("=== PAIEMENT ===")
+    log("=== VERIF SIGNATURE ===")
     Lc = 0
     data, sw1, sw2 = connection.transmit([CLA,INS_SEND_DATA,P1,P2,Lc])
-    print("Received:")
-    print(hex(sw1),hex(sw2), data)
     info = bytearray(data[:TOTAL_SIZE])
     sig = bytearray(data[TOTAL_SIZE:])
+    if not vk.verify(sig, info):
+        log("Unvalid signature", error=True)
+    else:
+        log("Nice signature")
 
-    print("Verif signature:", vk.verify(sig, info))
+    ## Get the ID and the public key of the user
+    id_user = int.from_bytes(info[:SIZE_ID], byteorder=ENDIANNESS)
+    conn = getSQLConn()
+    with conn:
+        c = conn.execute("SELECT pubkey, balance, first_name, name  FROM CLIENT WHERE id=?", (id_user,))
+        pubkey, balance, first_name, name = c.fetchone()
+    pubkey = parsePubKey(pubkey)
+    log("ID:", id_user)
+    log("First name:", first_name)
+    log("Name:", name)
+    log("Balance:", balance)
+    log("Public key:", pubkey)
 
-    pass
+    ## Check that the balance is sufficient
+    if balance - amount > 0:
+        log("Balance is sufficient")
+    else:
+        log("Balance not sufficient (%d - %d)" % (balance, amount), error=True)
+        return
+
+    ## Ask for the challenge
+    log("=== Challenge ===")
+    Lc = 0
+    challenge, sw1, sw2 = connection.transmit([CLA,INS_START_CHALLENGE,P1,P2,Lc])
+    log("Plaintext:", challenge)
+
+    ## Encrypt
+    pubkey = RSA.construct(pubkey)
+    encrypted = pubkey.encrypt(int.from_bytes(challenge, "big"), 0)[0]
+    encrypted = list(encrypted.to_bytes(64, "big"))
+    log("Encrypted:",  encrypted, len(encrypted))
+
+    ## Send the answer
+    Lc = len(encrypted)
+    success, sw1, sw2 = connection.transmit([CLA,INS_VERIF_CHALLENGE,P1,P2,Lc]+encrypted)
+    success = success[0]
+
+    if success == 0:
+        log("Challenge succeeded")
+    else:
+        log("Fail in challenge", error=True)
+
+    ## Write the new information
+    # Form the data
+    balance -= amount
+    info = id_user.to_bytes(SIZE_ID, ENDIANNESS)
+    info += first_name.encode() + b"\x00"*(SIZE_NAME - len(first_name))
+    info += name.encode() + b"\x00"*(SIZE_NAME - len(name))
+    info += balance.to_bytes(SIZE_BALANCE, ENDIANNESS)
+
+    # Sign it
+    sk = getSigningKey()
+    sig = sk.sign(info)
+    info = list(info + sig)
+
+    # Send it
+    Lc = len(info)
+    data, sw1, sw2 = connection.transmit([CLA,INS_RECEIVE_DATA,P1,P2,Lc]+info)
+
+    ## SQL part
+    conn = getSQLConn()
+    req = "UPDATE CLIENT SET balance = ? WHERE id=?"
+    data = (balance, id_user)
+    with conn:
+        conn.execute(req, data)
+
+    connection.disconnect()
 
 def seeBalance():
     global canvas, txt
@@ -193,24 +271,27 @@ def main():
     refill_frame = LabelFrame(root, text="Recharger sa carte", padx=5, pady=5)
     refill_frame.pack(fill="both", padx=5, pady=5, expand=True)
 
-    amount_refill = StringVar()
+    amount_refill = IntVar()
     ttk.Label(refill_frame, text="Montant").pack(side=LEFT, padx=10)
     ttk.Entry(refill_frame, textvariable=amount_refill).pack(side=LEFT, padx=10)
     ttk.Label(refill_frame, text="€").pack(side=LEFT, padx=10)
 
-    btn = ttk.Button(refill_frame, width=50, text="Recharger", command=refill)
+    btn = ttk.Button(refill_frame, width=50, text="Recharger",
+        command=lambda: transaction(-amount_refill.get()))
     btn.pack(side=LEFT, padx=10, pady=5)
 
     ## Pay
     refill_frame = LabelFrame(root, text="Payer", padx=5, pady=5)
     refill_frame.pack(fill="both", padx=5, pady=5, expand=True)
 
-    amount_pay = StringVar()
+    amount_pay = IntVar()
     ttk.Label(refill_frame, text="Montant").pack(side=LEFT, padx=10)
     ttk.Entry(refill_frame, textvariable=amount_pay).pack(side=LEFT, padx=10)
     ttk.Label(refill_frame, text="€").pack(side=LEFT, padx=10)
 
-    btn = ttk.Button(refill_frame, width=50, text="Recharger", command=pay)
+    btn = ttk.Button(refill_frame, width=50, text="Recharger",
+        command=lambda: transaction(amount_pay.get()))
+
     btn.pack(side=LEFT, padx=10, pady=5)
 
     root.mainloop()

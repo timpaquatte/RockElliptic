@@ -10,7 +10,9 @@ P1,P2 = 0x00, 0x00
 Le = 0x00 # set to 0 means the client does not know the size of received data 
 
 ## Instructions
-INS_RECEIVE_DATA = 0x01;
-INS_SEND_DATA = 0x02;
-INS_CHALLENGE = 0x03;
-DEBUG = 0x00;
+INS_RECEIVE_DATA = 0x01
+INS_SEND_DATA = 0x02
+INS_SEND_PUBKEY = 0x03
+INS_START_CHALLENGE = 0x04
+INS_VERIF_CHALLENGE = 0x05
+DEBUG = 0x00
