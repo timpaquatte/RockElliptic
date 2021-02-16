@@ -55,9 +55,9 @@ def createAccount(id_user, first_name, name, balance):
     if not sendData(connection, id_user, first_name, name, balance):
         return
 
-    pubKey = receivePubKey(connection)
+    pubkey = receivePubKey(connection)
 
-    insertInDatabase(id_user, first_name, name, balance, pubKey)
+    insertInDatabase(id_user, first_name, name, balance, pubkey)
 
     pubkey, PIN = parsePubKey(pubkey)
     log("Pin created:", PIN)
