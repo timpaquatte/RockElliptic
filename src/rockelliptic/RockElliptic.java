@@ -110,6 +110,8 @@ public class RockElliptic extends Applet {
 						state = STATE_PUBKEY;
 					else
 						state = STATE_WAITCHALL;
+					buffer[0] = 0;
+					apdu.setOutgoingAndSend((short) 0, (short) 1);
 				}
 				else {
 					buffer[0] = -1;

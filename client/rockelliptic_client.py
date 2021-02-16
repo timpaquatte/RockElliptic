@@ -114,6 +114,11 @@ def createAccount(id_user, first_name, name, balance):
     # Send it
     Lc = len(info)
     data, sw1, sw2 = connection.transmit([CLA,INS_RECEIVE_DATA,P1,P2,Lc]+info)
+    if data[0] == 0:
+        log("Data sent on the card")
+    else:
+        log("Problem during sending", error=True)
+        return
 
     # Receive public key
     Lc=0
@@ -173,8 +178,9 @@ def transaction(amount):
     sig = bytearray(data[TOTAL_SIZE:])
     if not vk.verify(sig, info):
         log("Unvalid signature", error=True)
+        return
     else:
-        log("Nice signature")
+        log("Right signature")
 
     ## Get the ID and the public key of the user
     id_user = int.from_bytes(info[:SIZE_ID], byteorder=ENDIANNESS)
@@ -183,12 +189,14 @@ def transaction(amount):
         c = conn.execute("SELECT pubkey, balance, first_name, name  FROM CLIENT WHERE id=?", (id_user,))
         pubkey, balance, first_name, name = c.fetchone()
     pubkey, pin_created = parsePubKey(pubkey)
+    log("=== Content of the card ===")
     log("ID:", id_user)
     log("First name:", first_name)
     log("Name:", name)
     log("Balance:", balance)
     log("Public key:", pubkey)
-    log("PIN created:", pin_created)
+    log("PIN:", pin_created)
+    log("===========================")
 
     ## Check that the balance is sufficient
     if balance - amount > 0:
@@ -218,6 +226,7 @@ def transaction(amount):
         log("Challenge succeeded")
     else:
         log("Fail in challenge", error=True)
+        return
 
 
     ## Send the PIN code
@@ -231,6 +240,7 @@ def transaction(amount):
         log("Right PIN")
     else:
         log("Wrong PIN", error=True)
+        return
 
     ## Write the new information
     # Form the data
@@ -248,6 +258,13 @@ def transaction(amount):
     # Send it
     Lc = len(info)
     data, sw1, sw2 = connection.transmit([CLA,INS_RECEIVE_DATA,P1,P2,Lc]+info)
+
+    if data[0] == 0:
+        log("Data sent on the card")
+    else:
+        log("Problem during sending", error=True)
+        return
+
 
     ## SQL part
     conn = getSQLConn()
