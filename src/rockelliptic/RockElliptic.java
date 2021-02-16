@@ -55,7 +55,7 @@ public class RockElliptic extends Applet {
     private RockElliptic() {
 		RockElliptic.keyPair = new KeyPair(KeyPair.ALG_RSA_CRT, KeyBuilder.LENGTH_RSA_512);
 		RockElliptic.state = STATE_EMPTY;
-		RockElliptic.pin = new OwnerPIN((byte) 4, (byte) 4);
+		RockElliptic.pin = new OwnerPIN((byte) 100, (byte) 4);
 		register();
     }
 
