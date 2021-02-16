@@ -186,9 +186,11 @@ def main():
     account_frame.pack(fill="both", padx=5, pady=5)
 
     name = StringVar()
-    balance = IntVar()
+    balance = StringVar()
     first_name = StringVar()
-    id_user = IntVar()
+    id_user = StringVar()
+    balance.set("0")
+    id_user.set("0")
     ttk.Label(account_frame, text="Prénom").grid(row=0, column=0)
     ttk.Entry(account_frame, textvariable=first_name).grid(row=0, column=1)
     ttk.Label(account_frame, text="Nom").grid(row=1, column=0)
@@ -199,7 +201,7 @@ def main():
     ttk.Label(account_frame, text="Numéro de participant").grid(row=3, column=0)
     ttk.Entry(account_frame, textvariable=id_user).grid(row=3, column=1)
 
-    callback = lambda: createAccount(id_user.get(), first_name.get(), name.get(), balance.get())
+    callback = lambda: createAccount(int(id_user.get()), first_name.get(), name.get(), int(balance.get()))
     btn = ttk.Button(account_frame, width=38, text="Créer", command=callback)
     btn.grid(columnspan=2, rowspan=2, row=1, column=3, padx=30)
 
@@ -207,27 +209,49 @@ def main():
     refill_frame = LabelFrame(root, text="Recharger sa carte", padx=5, pady=5)
     refill_frame.pack(fill="both", padx=5, pady=5, expand=True)
 
-    amount_refill = IntVar()
+    amount_refill = StringVar()
+    amount_refill.set("0")
     ttk.Label(refill_frame, text="Montant").pack(side=LEFT, padx=10)
     ttk.Entry(refill_frame, textvariable=amount_refill).pack(side=LEFT, padx=10)
     ttk.Label(refill_frame, text="€").pack(side=LEFT, padx=10)
 
     btn = ttk.Button(refill_frame, width=50, text="Recharger",
-        command=lambda: transaction(-amount_refill.get()))
+        command=lambda: transaction(-int(amount_refill.get())))
     btn.pack(side=LEFT, padx=10, pady=5)
 
     ## Pay
     refill_frame = LabelFrame(root, text="Payer", padx=5, pady=5)
     refill_frame.pack(fill="both", padx=5, pady=5, expand=True)
 
-    amount_pay = IntVar()
+    amount_pay = StringVar()
+    amount_pay.set("0")
     ttk.Label(refill_frame, text="Montant").pack(side=LEFT, padx=10)
     ttk.Entry(refill_frame, textvariable=amount_pay).pack(side=LEFT, padx=10)
     ttk.Label(refill_frame, text="€").pack(side=LEFT, padx=10)
 
     btn = ttk.Button(refill_frame, width=50, text="Payer",
-        command=lambda: transaction(amount_pay.get()))
+        command=lambda: transaction(int(amount_pay.get())))
 
     btn.pack(side=LEFT, padx=10, pady=5)
+
+
+    ## Limit the input to ASCII characters
+    def limitToAscii(var):
+        value = var.get()
+        if len(value) > 20: var.set(value[:20])
+        elif len(value) > 0 and value[-1] not in string.ascii_letters:
+            var.set(value[:-1])
+    name.trace('w', lambda x,y,z: limitToAscii(name))
+    first_name.trace('w', lambda x,y,z: limitToAscii(first_name))
+
+    ## Limit the numeric inputs to digits
+    def limitToDigits(var):
+        value = var.get()
+        if len(value) > 0 and value[-1] not in string.digits:
+            var.set(value[:-1])
+    balance.trace('w', lambda x,y,z: limitToDigits(balance))
+    id_user.trace('w', lambda x,y,z: limitToDigits(id_user))
+    amount_pay.trace('w', lambda x,y,z: limitToDigits(amount_pay))
+    amount_refill.trace('w', lambda x,y,z: limitToDigits(amount_refill))
 
     root.mainloop()
