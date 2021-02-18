@@ -22,6 +22,7 @@ def connectReader():
     try:
         connection.connect()
     except:
+        updateBalanceDisplay("Carte non détectée", 50)
         return None
 
     # Send the apdu
@@ -51,6 +52,8 @@ def createAccount(id_user, first_name, name, balance):
         return
 
     connection = connectReader()
+    if connection == None:
+        return
 
     if not sendData(connection, id_user, first_name, name, balance):
         return
@@ -67,6 +70,9 @@ def createAccount(id_user, first_name, name, balance):
 
 def transaction(amount):
     connection = connectReader()
+
+    if connection == None:
+        return
 
     info = verifySig(connection)
     if info == -1:
@@ -114,10 +120,10 @@ canvas = None
 txt = None
 
 
-def updateBalanceDisplay(balance):
+def updateBalanceDisplay(text_displayed, size):
     global canvas, txt
     canvas.delete(txt)
-    txt = canvas.create_text(400, 150, text="%d €"%balance, font=(FONT, 70))
+    txt = canvas.create_text(400, 150, text=text_displayed, font=(FONT, size))
 
 def seeBalance():
     global canvas, txt
@@ -130,10 +136,7 @@ def seeBalance():
         info = bytearray(data[:TOTAL_SIZE])
         balance = int.from_bytes(info[-SIZE_BALANCE:], ENDIANNESS)
 
-        updateBalanceDisplay(balance)
-    else:
-        canvas.delete(txt)
-        txt = canvas.create_text(400, 150, text="Carte non détectée", font=(FONT, 50))
+        updateBalanceDisplay("%d €" % balance, 70)
 
 def enterPinCode():
     newWindow = Toplevel()
