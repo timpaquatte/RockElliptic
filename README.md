@@ -1,6 +1,8 @@
 # RockElliptic
 A Public Key Infrastructure for JavaCard with a Python client
 
+![Screen of the GUI](https://raw.githubusercontent.com/timpaquatte/RockElliptic/master/pictures/screen_rockelliptic.png)
+
 ## Installation
 
 ```
