@@ -107,7 +107,7 @@ def transaction(amount):
         return
 
     updateEntry(id_user, balance)
-    updateBalanceDisplay(balance)
+    updateBalanceDisplay(balance, 70)
 
     connection.disconnect()
 
