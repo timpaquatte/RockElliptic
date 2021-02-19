@@ -165,6 +165,7 @@ def enterPinCode():
 
     return [int(x) for x in PIN.get()]
 
+
 def main():
     global canvas, txt
 
@@ -195,7 +196,8 @@ def main():
     balance.set("0")
     id_user.set("0")
     ttk.Label(account_frame, text="Prénom").grid(row=0, column=0)
-    ttk.Entry(account_frame, textvariable=first_name).grid(row=0, column=1)
+    entry_first_name = ttk.Entry(account_frame, textvariable=first_name)
+    entry_first_name.grid(row=0, column=1)
     ttk.Label(account_frame, text="Nom").grid(row=1, column=0)
     ttk.Entry(account_frame, textvariable=name).grid(row=1, column=1)
     ttk.Label(account_frame, text="Débit").grid(row=2, column=0)
@@ -257,4 +259,18 @@ def main():
     amount_pay.trace('w', lambda x,y,z: limitToDigits(amount_pay))
     amount_refill.trace('w', lambda x,y,z: limitToDigits(amount_refill))
 
+    def handleReturnKey(*args):
+        current_focus = str(root.focus_get())
+        if current_focus == None:
+            return
+        if "labelframe." in current_focus:
+            callback()
+        elif "labelframe2." in current_focus:
+            transaction(-int(amount_pay.get()))
+        elif "labelframe3." in current_focus:
+            transaction(int(amount_pay.get()))
+        else:
+            seeBalance()
+    root.bind("<Return>", handleReturnKey)
+    entry_first_name.focus_set()
     root.mainloop()
