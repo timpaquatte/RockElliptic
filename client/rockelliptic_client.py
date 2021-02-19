@@ -63,7 +63,7 @@ def createAccount(id_user, first_name, name, balance):
     insertInDatabase(id_user, first_name, name, balance, pubkey)
 
     pubkey, PIN = parsePubKey(pubkey)
-    log("Pin created:", PIN)
+    updateBalanceDisplay("PIN: " + "".join([str(x) for x in PIN]), 70)
 
     #Disconnect the reader
     connection.disconnect()
