@@ -84,7 +84,11 @@ def transaction(amount):
 
     ## Get the ID and the public key of the user
     id_user = int.from_bytes(info[:SIZE_ID], byteorder=ENDIANNESS)
-    first_name, name, balance, pubkey, PIN = getEntrySQL(id_user)
+    sql_entry = getEntrySQL(id_user)
+    if sql_entry == -1:
+        log("This ID is not in the database", error=True)
+        return
+    first_name, name, balance, pubkey, PIN = sql_entry
     log("=== Content of the card ===")
     log("ID:", id_user)
     log("First name:", first_name)
