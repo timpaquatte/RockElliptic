@@ -39,10 +39,13 @@ def getEntrySQL(id_user):
     conn = getSQLConn()
     with conn:
         c = conn.execute("SELECT pubkey, balance, first_name, name  FROM CLIENT WHERE id=?", (id_user,))
-        pubkey, balance, first_name, name = c.fetchone()
+        cursor = c.fetchone()
+    if cursor == None:
+        return -1
+    pubkey, balance, first_name, name = cursor
     pubkey, PIN = parsePubKey(pubkey)
 
-    return first_name, name, balance, pubkey, PIN
+    return first_name, name, balance, pubkey , PIN
 
 def updateEntry(id_user, new_balance):
     conn = getSQLConn()

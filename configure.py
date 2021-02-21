@@ -48,9 +48,9 @@ file.close()
 file = open("Makefile", "w")
 content_makefile = '''PATH_TO_GP_JAR="/home/tim/INF648_Embedded_security/DevJavaCard/tools/GlobalPlatformPro/gp.jar"
 
-all: create_key install_card
+all: create_keys install_card
 
-create_key:
+create_keys:
 	python ressources/generate_keys.py
 	mv *.pem ressources/
 

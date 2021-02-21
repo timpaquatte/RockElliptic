@@ -45,11 +45,15 @@ def sendData(connection, id_user, first_name, name, balance):
     Lc = len(info)
     data, sw1, sw2 = connection.transmit([CLA,INS_RECEIVE_DATA,P1,P2,Lc]+info)
 
-    return handleReturnCode(data[0], "Data sent on the card", "Problem during sending")
+    return handleReturnCode(data[0], "Data sent correctly", "Sending not allowed by the card")
 
 def createAccount(id_user, first_name, name, balance):
     if checkParams(id_user, first_name, name, balance) == -1:
         return
+
+    if getEntrySQL(id_user) != -1:
+        log("This ID already exists in the database", error=True)
+        return -1
 
     connection = connectReader()
     if connection == None:
@@ -91,7 +95,7 @@ def transaction(amount):
     log("===========================")
 
     if (balance - amount) < 0:
-        log("Balance not sufficient (%d - %d)" % (balance, amount), error=True)
+        log("Balance not sufficient (%d < %d)" % (balance, amount), error=True)
         return
 
     return_code = cryptoChallenge(connection, pubkey)
@@ -107,7 +111,7 @@ def transaction(amount):
         return
 
     updateEntry(id_user, balance)
-    updateBalanceDisplay(balance, 70)
+    updateBalanceDisplay(str(balance) + " €", 70)
 
     connection.disconnect()
 
@@ -266,7 +270,7 @@ def main():
         if "labelframe." in current_focus:
             callback()
         elif "labelframe2." in current_focus:
-            transaction(-int(amount_pay.get()))
+            transaction(-int(amount_refill.get()))
         elif "labelframe3." in current_focus:
             transaction(int(amount_pay.get()))
         else:

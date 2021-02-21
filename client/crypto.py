@@ -48,11 +48,12 @@ def verifySig(connection):
     data, sw1, sw2 = connection.transmit([CLA,INS_SEND_DATA,P1,P2,Lc])
     info = bytearray(data[:TOTAL_SIZE])
     sig = bytearray(data[TOTAL_SIZE:])
-    if not vk.verify(sig, info):
+    try:
+        vk.verify(sig, info)
+        return info
+    except Exception:
         log("Unvalid signature", error=True)
         return -1
-
-    return info
 
 def sendPINCode(connection, PIN):
     Lc = 4
